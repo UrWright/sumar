@@ -1,0 +1,7 @@
+[
+  {"purpose": "title", "system_prompt": "Design a proper title of the text."},
+  {"purpose": "abstrct", "system_prompt": "Conclude the abstracct of the text."},
+  {"purpose": "summary", "system_prompt": "Summarize the text"},
+  {"purpose": "memos", "system_prompt": "Capture the important matters of the text"}
+]
+            

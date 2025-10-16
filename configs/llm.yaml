@@ -1,0 +1,26 @@
+local_llm:
+  api_key: "xxxxxx"
+  base_url: "xxxxxx"
+  model:
+    - "xxxxxx"
+  model_info:
+    vision: false
+    function_calling: true
+    json_output: false
+    structured_output: true
+    family: "unknown"
+
+remote_llm:
+  api_key: "xxxxxx"
+  base_url: "xxxxxx"
+  model:
+    - "xxxxxx"
+    - "yyyyyy"
+    - "zzzzzz"
+  model_info:
+    vision: false
+    function_calling: true
+    json_output: false
+    structured_output: true
+    family: "unknown"
+

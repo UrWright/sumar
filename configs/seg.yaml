@@ -1,0 +1,7 @@
+sat:
+    model_dir: "models/wtpsplit"
+    model_repo: "segment-any-text/sat-12l-sm"
+    tokenizer_repo: "facebookAI/xlm-roberta-base"
+tiktoken:
+    model_dir: "models/tiktoken"
+    model_repo: "cl100k_base"

@@ -1,0 +1,51 @@
+version: 1
+disable_existing_loggers: false
+formatters:
+  default:
+    "()": "logging.Formatter"
+    fmt: ">> %(asctime)s.%(msecs)03d | %(levelname)-10s [%(name)s:%(filename)s:%(funcName)s:%(lineno)d] %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+handlers:
+    default:
+      formatter: "default"
+      class: "logging.StreamHandler"
+      stream: "ext://sys.stdout"
+    file_size_based:
+      formatter: "default"
+      class: "logging.handlers.RotatingFileHandler"
+      filename: "log.txt"
+      maxBytes: 10485760
+      backupCount: 5
+    file_time_based:
+      formatter: "default"
+      class: "logging.handlers.TimedRotatingFileHandler"
+      filename: "log.txt"
+      when: "MIDNIGHT"
+      interval: 1
+      backupCount: 31
+loggers:
+    root:
+      level: "WARNING"
+      handlers: ["default", "file_size_based"]
+      encoding: "utf-8"
+    sumar:
+      level: "DEBUG"
+      handlers: ["default", "file_size_based"]
+      encoding: "utf-8"
+      propagate: false
+    autogen_core:
+      level: "WARNING"
+      handlers: ["default"]
+      encoding: "utf-8"
+    autogen_core.trace:
+      handlers: ["default", "file_size_based", "file_time_based"]
+      level: "WARNING"
+      encoding: "utf-8"
+    autogen_core.events:
+      handlers: ["default", "file_size_based", "file_time_based"]
+      level: "WARNING"
+      encoding: "utf-8"
+    sse_starlette:
+      handlers: ["default", "file_size_based", "file_time_based"]
+      level: "WARNING"
+      encoding: "utf-8"
