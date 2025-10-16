@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Web Client Demo</title>
+    <style>
+        .flex-container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            resize: vertical;
+        }
+        
+        .box {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Upload File</h2>
+    <input type="file" id="fileInput" accept=".txt"><br>
+    <button onclick="submitFile()">Submit File</button>
+    <input type="checkbox" id="chunkedCheck" style="margin-left: 20px;">
+    <label for="chunkedCheck" style="margin-right: 10px;">Chunk File</label>
+    <input type="number" id="chunkSizeInput" placeholder="chunk size" style="width:120px;">
+
+    <div class="flex-container">
+        <div class="box">
+            <label>File Preview</label>
+            <textarea id="fileContent"></textarea>
+        </div>
+        <div class="box">
+            <label>Prompt List（JSON）</label>
+            <textarea id="promptsContent">
+              [
+                {"purpose": "title", "system_prompt": "Design a proper title of the text."},
+                {"purpose": "abstrct", "system_prompt": "Conclude the abstracct of the text."},
+                {"purpose": "summary", "system_prompt": "Summarize the text"},
+                {"purpose": "memos", "system_prompt": "Capture the important matters of the text"}
+              ]
+            </textarea>
+        </div>
+    </div>
+
+    <h2>Results</h2>
+    <div>
+        <input type="text" id="sessionIdBox" placeholder="Session ID will appear here">
+        <label><input type="radio" name="streamMode" value="false" checked> one-by-one </label>
+        <label><input type="radio" name="streamMode" value="true"> stream </label>
+        <button onclick="getResult()" style="margin-left: 10px;"> retrieve result </button>
+        <button id="closeSessionBtn" style="margin-left: 50px;"> quit session </button>
+    </div>
+
+    <pre id="resultBox" style="border:1px solid #ccc; padding:10px; width:1200px; height:200px; overflow:auto;"></pre>
+
+    <script>
+        //let sessionId = ""; //"test123";
+        document.getElementById("sessionIdBox").value = "";
+        const closeBtn = document.getElementById("closeSessionBtn");
+
+        closeBtn.addEventListener("click", async() => {
+            const sessionId = document.getElementById("sessionIdBox").value;
+            if (!sessionId) {
+                alert("ERROR: Session ID (Null)");
+                return;
+            }
+
+            try {
+                const res = await fetch("/v1/text/summarize/dismiss", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId
+                    })
+                });
+                const data = await res.json();
+                const resultBox = document.getElementById("resultBox");
+                resultBox.textContent += `\n++ CLOSE Session ${sessionId}: ${JSON.stringify(data, null, 2)}.\n\n`;
+                resultBox.scrollTop = resultBox.scrollHeight;
+            } catch (e) {
+                console.error(e);
+                alert("ERROR: Failed to Close Session: " + old_sessionId + " (" + e + ")");
+            }
+        });
+
+        document.getElementById("fileInput").addEventListener("change", async(event) => {
+            const sessionId = document.getElementById("sessionIdBox").value;
+            const file = event.target.files[0];
+            if (file) {
+                const text = await file.text();
+                document.getElementById("fileContent").value = text;
+
+                const resultBox = document.getElementById("resultBox");
+                resultBox.textContent += `\n========== Process File: ${file.name} ==========\n\n`;
+                resultBox.scrollTop = resultBox.scrollHeight;
+            }
+        });
+
+        async function submitFile() {
+            const sessionId = document.getElementById("sessionIdBox").value;
+            const long_text = document.getElementById("fileContent").value;
+            let promptsText = document.getElementById("promptsContent").value;
+
+            if (!long_text) {
+                alert("ERROR: No File Selected！");
+                return;
+            }
+
+            let prompt_list;
+            if (promptsText != "") {
+                try {
+                    promptsText = promptsText.replace(/[\n\r]/g, '').trim();
+                    prompt_list = JSON.parse(promptsText);
+                } catch (e) {
+                    alert("ERROR: Invalid Prompt List (JSON): " + e);
+                    return;
+                }
+            }
+
+            const payload = {
+                session_id: sessionId,
+                long_text,
+                prompt_list
+            };
+
+            const chunked = document.getElementById("chunkedCheck").checked;
+            const chunkSize = parseInt(document.getElementById("chunkSizeInput").value, 10);
+
+            if (chunked && chunkSize > 0) {
+                payload.threshold = chunkSize;
+            }
+
+            console.log("Payload to send:", payload);
+
+            const response = await fetch("/v1/text/summarize", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (data.type == "FINISH") {
+                const new_sessionId = data.session_id;
+                document.getElementById("sessionIdBox").value = new_sessionId;
+                const resultBox = document.getElementById("resultBox");
+                resultBox.textContent += `\n++ BEGIN Session ${new_sessionId}: ${JSON.stringify(data,null,2)}  \n\n`;
+                resultBox.scrollTop = resultBox.scrollHeight;
+            } else {
+                alert("ERROR: Failed to Process: " + JSON.stringify(data));
+            }
+        }
+
+        async function getResult() {
+            const sessionId = document.getElementById("sessionIdBox").value;
+            const streamMode = document.querySelector('input[name="streamMode"]:checked').value === "true";
+            const resultBox = document.getElementById("resultBox");
+
+            resultBox.textContent += `\n++ OUTPUT Session ${sessionId}: \n\n`;
+            resultBox.scrollTop = resultBox.scrollHeight;
+            if (!streamMode) {
+                const response = await fetch("/v1/text/summarize/result", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        stream: false
+                    })
+                });
+
+                const data = await response.json();
+                resultBox.textContent += JSON.stringify(data, null, 2) + "\n";
+                resultBox.scrollTop = resultBox.scrollHeight;
+            } else {
+                const response = await fetch("/v1/text/summarize/result", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        stream: true
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+
+                while (true) {
+                    const {
+                        done,
+                        value
+                    } = await reader.read();
+                    if (done) break;
+                    resultBox.textContent += decoder.decode(value, {
+                        stream: true
+                    });
+                    resultBox.scrollTop = resultBox.scrollHeight;
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
